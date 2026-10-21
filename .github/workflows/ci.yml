@@ -1,9 +1,14 @@
-# Bootstrap-CI (main). Der komplette orchestrator-CI (Drift-Guards + 18 Tests)
-# liegt auf dem PR featt/m4-m7 (-> .github/workflows/ci.yml) und wird
-# beim Mergen ueberschrieben. Main laeift trivial gruen, waehrend die
-# M4-M7-Arbeit reviewbar im PR ist und NICHT direkt auf main.
+# CI fuer orchestration — M4-M7 (21.10.2026)
+#
+# CANONICAL-Bausteine sind in vendor/ (VENDOR, weil shared-lib und
+# autonomy PRIVAT sind, s. prototypen/M1-CI-FIX.md). PYTHONPATH zeigt
+# auf vendor/ => import gw_shared_lib und gw_core_subset ohne Netz,
+# ohne pip, ohne Secret.
+#
+# Matrix: Python 3.11, 3.12 (kein 3.9 — gw_core_subset braucht
+# `datetime.UTC`, 3.11+. Prototypen deckt 3.9, orchestration 3.11+.)
 
-name: bootstrap-ci
+name: orchestration-ci
 
 on:
   push:
@@ -11,16 +16,60 @@ on:
   pull_request:
 
 jobs:
-  bootstrap:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11']
+        python-version: ['3.11', '3.12']
+    env:
+      PYTHONPATH: "${{ github.workspace }}/vendor"
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python
+
+      - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Python-Version
-        run: python --version
+
+      - name: Install pytest
+        run: python -m pip install pytest
+
+      # --- DRIFT-GUARD #1: gw_shared_lib CANONICAL (s. prototypen M1) ---
+      - name: Vendor drift-guard (gw_shared_lib, CANONICAL)
+        run: |
+          [ -d vendor/gw_shared_lib ] || { echo "gw_shared_lib fehlt"; exit 1; }
+          python -c "import sys; sys.path.insert(0,'vendor'); from gw_shared_lib.guard import INJECTION_SIGNATURES as s; assert len(s)==16, f'DRIFT: {len(s)} != 16'; print('OK: INJECTION_SIGNATURES =', len(s))"
+
+      # --- DRIFT-GUARD #2: gw_core_subset CANONICAL (M7) ---
+      - name: Vendor drift-guard (gw_core_subset, CANONICAL)
+        run: |
+          [ -d vendor/gw_core_subset ] || { echo "gw_core_subset fehlt"; exit 1; }
+          python -c "import sys; sys.path.insert(0,'vendor'); from gw_core_subset.approval import ApprovalQueue as Q; assert all(hasattr(Q, m) for m in ('freigabe','zurueckstellen','anpassen','vorschlage')); print('OK: ApprovalQueue-Methode ok')"
+
+      - name: Compile-check
+        run: python -m compileall -q orch vendor
+
+      - name: Tests (18, grün)
+        run: python -m pytest tests/
+
+      - name: Demo-Script
+        run: python -m examples.demo_rechnung
+
+      # --- Produktiv-Upgrade (deaktiviert, dokumentiert) ---
+      # Wenn feingranulierte PATs (SHARED_LIB_TOKEN + GW_CORE_TOKEN,
+      # scope: read, auf je beidem Repo) als github.com Secrets existieren:
+      #
+      #   - name: Checkout shared-lib (privat, CANONICAL via Secret)
+      #     uses: actions/checkout@v4
+      #     with:
+      #       repository: GRADweight/shared-lib
+      #       ref: f05457b4
+      #       path: _shared-lib
+      #       token: ${{ secrets.SHARED_LIB_TOKEN }}
+      #   - name: Checkout autonomy/gw_core (privat, CANONICAL via Secret)
+      #     uses: actions/checkout@v4
+      #     with:
+      #       repository: GRADweight/autonomy
+      #       path: _autonomy
+      #       token: ${{ secrets.GW_CORE_TOKEN }}
+      # +  PYTHONPATH: "${{ github.workspace }}/_shared-lib:${{ github.workspace}}/_autonomy/packages"
