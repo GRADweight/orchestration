@@ -1,0 +1,7 @@
+[project]
+name = "gw-orchestration"
+version = "0.1.0"
+description = "GRADweight Multi-Agent-Orchestrator (scaffold, full M4-M7 in PR feat/m4-m7)."
+requires-python = ">=3.11"
+license = { text = "Proprietary - GRADweight GmbH" }
+dependencies = []

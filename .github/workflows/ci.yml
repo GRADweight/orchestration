@@ -1,0 +1,26 @@
+# Bootstrap-CI (main). Der komplette orchestrator-CI (Drift-Guards + 18 Tests)
+# liegt auf dem PR featt/m4-m7 (-> .github/workflows/ci.yml) und wird
+# beim Mergen ueberschrieben. Main laeift trivial gruen, waehrend die
+# M4-M7-Arbeit reviewbar im PR ist und NICHT direkt auf main.
+
+name: bootstrap-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Python-Version
+        run: python --version
