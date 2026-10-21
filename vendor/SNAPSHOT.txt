@@ -1,0 +1,16 @@
+VENDOR SNAPSHOT - orchestration
+Datum: 2026-10-21
+Grund: Q1 21.10.2026 - Wave 1 privat, kein pip-Install aus privatem Repo
+
+CANONICAL-Quellen:
+  gw_shared_lib:  shared-lib @ f05457b4 (v0.1.0, 6 stdlib-Module)
+  gw_core_subset: autonomy/packages/gw_core @ 8982df27
+                  (audit.py, authz.py, approval.py - 3 Dateien,
+                   ohne httpx/bexio - nur fuer orchestration/M7 noetig)
+
+Drift-Guards (CI prueft):
+  - gw_shared_lib/guard.py:  INJECTION_SIGNATURES == 16
+  - gw_core_subset/approval.py: ApprovalQueue hat freigabe/zurueckstellen/anpassen
+
+Upgrade-Pfad: bei v0.2 von shared-lib neu kopieren + SNAPSHOT aktualisieren.
+              gw_core_subset bei autonomy-Update neu extrahieren.
