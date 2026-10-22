@@ -205,15 +205,30 @@ class Sandbox:
         result_file.parent.mkdir(parents=True, exist_ok=True)
         result_file.write_text("{}", encoding="utf-8")
 
+        # ── Hermetisches Kind: Worker in ein NEUTRALES Temp-Dir kopieren ──
+        #
+        # Der Worker läuft nie aus `orch/` — dort schattiert `orch/types.py`
+        # das stdlib-Modul `types`, und ein Teil von CPythons Bootstrap
+        # (`_weakrefset → types.GenericAlias`, versions-abhängig) stürzt dann
+        # in einer Importschleife ab. Aus einem neutralen Verzeichnis (tmp)
+        # ist `sys.path[0]` leer → stdlib wird sauber aufgelöst, auf jedem
+        # OS und jeder Python-Version. (Green-Local / Red-CI-Falle, behoben.)
+        child_worker = self._tmpdir / "sandbox_worker.py"
+        child_worker.write_bytes(self._worker.read_bytes())
+
+        # ── Hermetisches Kind: sauberes PYTHONPATH ──
+        # Das Kind erbt keine `orch`-Pakete vom Parent → kein stdlib-Schatten.
         env = os.environ.copy()
         env["GW_SB_SPEC"] = json.dumps(payload, ensure_ascii=False)
+        env.pop("PYTHONPATH", None)
+        env["PYTHONPATH"] = ""  # leere Liste: nur stdlib + path[0]
         # SIGXCPU-Signal im Kind abfangen (per preexec_fn gesetzt)
         limit_s = int(payload.get("cpu_seconds", 5))
 
         start = time.monotonic()
         try:
             p = subprocess.run(
-                [sys.executable, str(self._worker)],
+                [sys.executable, str(child_worker)],
                 input="",
                 capture_output=True,
                 text=True,
