@@ -269,11 +269,23 @@ class Sandbox:
             # Kind lief, aber Tool selbst ok=False — klassifizieren
             return self._classify_error(res, res.get("error", ""), p, tool_name, dur)
 
-        # rc < 0 → Signal
+        # rc < 0 → Signal.
+        #
+        # Ein echter Wall-Timeout läuft durch den `except TimeoutExpired`-Zweig
+        # (subprocess.kill + TimeoutExpired) und erreicht NICHT diesen Ast.
+        # Ein rc < 0 entsteht also nur durch ein ausseres Signal — in der
+        # Sandbox ist das stets der Kernel-CPU-Kill (RLIMIT_CPU). Das genaue
+        # Signal ist kernel-/plattform-abhängig: Linux liefert für einen engen
+        # Loop oft SIGKILL statt SIGXCPU. Das robuste Signal (s. M5-M6.md) ist
+        # daher "frühes Tod vor dem Wall-Budget" — das beweist CPU-Limit, nicht
+        # Wall-Timeout; der Test prüft `duration_s << wall_budget`.
         if rc < 0:
             signum = -rc
             sig_name = signal.Signals(signum).name if signum < 32 else f"SIG{signum}"
-            if sig_name in ("SIGXCPU",):  # signal 24
+            cpu_signal = sig_name in ("SIGXCPU", "SIGKILL")  # 24 = CPU, 9 = kill
+            # CPU-Kill nur, wenn er FRÜH kommt (weit vor dem grossen Wall-Budget):
+            early = dur < max(2.0, timeout_s * 0.25)
+            if cpu_signal and early:
                 return SandboxReport(
                     tool=tool_name,
                     ok=False,
@@ -281,12 +293,22 @@ class Sandbox:
                     cpu_limited=True,
                     duration_s=dur,
                 )
-            if sig_name in ("SIGKILL",):  # signal 9 (wall timeout)
+            # späte SIGKILL (>= Budget-Fenster) = echter Wall-Timeout
+            if sig_name in ("SIGKILL",):
                 return SandboxReport(
                     tool=tool_name,
                     ok=False,
                     error=f"Wall-Timeout: {sig_name}",
                     timed_out=True,
+                    duration_s=dur,
+                )
+            # SIGXCPU, späte Variante — bleibt CPU-Limit
+            if sig_name in ("SIGXCPU",):
+                return SandboxReport(
+                    tool=tool_name,
+                    ok=False,
+                    error=f"CPU-Limit {limit_s}s: {sig_name}",
+                    cpu_limited=True,
                     duration_s=dur,
                 )
             # Other signals → generic failure

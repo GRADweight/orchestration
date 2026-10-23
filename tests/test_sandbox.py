@@ -99,11 +99,24 @@ def test_network_block_socket() -> None:
 
 
 def test_cpu_limit_kills_process() -> None:
-    """Ein CPU-hungry Tool wird per RLIMIT_CPU (SIGXCPU) getötet."""
+    """CPU-Limit: ein CPU-hungry Loop stirbt *kurz* (≈ cpu_seconds),
+    weit vor dem grossen Wall-Budget — die beobachtbare Invariante.
+
+    Das genaue Signal ist kernel-abhängig (Linux/Runner liefert oft
+    SIGKILL statt SIGXCPU für eine enge Loop). Robust ist aber: ein
+    CPU-bound-Tool wird durch das CPU-Limit gestoppt, nicht durch das
+    Wall-Budget — das beweist `duration_s << wall_budget`.
+    """
     sb = Sandbox()
-    rep = sb.run_function(_cpu_burn, name="burn", timeout_s=15, cpu_seconds=1)
-    assert rep.cpu_limited is True or "SIGXCPU" in rep.error
+    rep = sb.run_function(_cpu_burn, name="burn", timeout_s=600, cpu_seconds=1)
     assert rep.ok is False
+    # Entweder klassifiziert als cpu_limited ...
+    assert rep.cpu_limited or "SIGXCPU" in (rep.error or "")
+    # ... oder (fallback) als Signal getötet, und auf jeden Fall KURZ
+    # (weit vor dem 600s-Wall-Budget) — beweist, CPU-Limit (nicht Wall) hat
+    # den Loop gestoppt.
+    assert rep.duration_s < 30.0, f"Loop lief {rep.duration_s:.1f}s — sollte CPU-Limit ~1s sein"
+
 
 
 # ── 4) Sandbox-Escape (subprocess vs. os.system) ────────────────────────────
