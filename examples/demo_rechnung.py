@@ -5,7 +5,7 @@ Observer (Testpfad) + StubClient. Für Produktion: setze GW_INFER_URL und
 tausche RulePlanner/RuleObserver gegen LLMPlanner/LLMObserver.
 
 Befehl:
-    cd ~/code/GRADweight/orchestration
+    cd path/to/orchestration  # z.B. ~/code/GRADweight/orchestration
     PYTHONPATH=vendor:. python -m examples.demo_rechnung
 """
 from __future__ import annotations
