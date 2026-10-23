@@ -49,8 +49,25 @@ jobs:
       - name: Compile-check
         run: python -m compileall -q orch vendor
 
-      - name: Tests (18, grün)
-        run: python -m pytest tests/
+      # --- DRIFT-GUARD #3: M5 Sandbox existiert (Tool-Sandbox, P1) ---
+      - name: M5 sandbox present
+        run: |
+          [ -f orch/sandbox.py ] || { echo "orch/sandbox.py fehlt"; exit 1; }
+          [ -f orch/example_tools.py ] || { echo "orch/example_tools.py fehlt"; exit 1; }
+          python -c "import sys; sys.path.insert(0,'vendor'); sys.path.insert(0,'.'); from orch.sandbox import Sandbox, ToolTimeout, ToolCpuLimit, ToolNetworkBlock, ToolEscape; print('OK: M5 Sandbox + Fehlerklassen')"
+
+      # --- DRIFT-GUARD #4: M6 canonical Memory (episodes, P2) ---
+      - name: M6 canonical Memory present
+        run: |
+          [ -f vendor/gw_shared_lib/memory.py ] || { echo "gw_shared_lib/memory.py fehlt"; exit 1; }
+          python -c "import sys; sys.path.insert(0,'vendor'); from gw_shared_lib.memory import Memory; assert all(hasattr(Memory, m) for m in ('add','get','forget')), 'M6 Memory API fehlt'; print('OK: M6 Memory API (add/get/forget)')"
+
+      - name: Tests (35, grün)
+        run: python -m pytest tests/ -q
+
+      - name: M6 smoke (GAP_ANALYSE.md Abnahme)
+        run: |
+          python -c "import sys,tempfile,pathlib; sys.path.insert(0,'vendor'); from gw_shared_lib.memory import Memory; m=Memory(str(pathlib.Path(tempfile.mkdtemp())/'smoke.jsonl')); m.add('test'); assert m.get('test',k=1)[0].event=='test'; print('OK: M6 smoke add->get')"
 
       - name: Demo-Script
         run: python -m examples.demo_rechnung

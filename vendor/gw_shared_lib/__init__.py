@@ -48,6 +48,7 @@ from .rag import Chunk, RAGPipeline, RAGResult
 from .config import Config, load_config
 from .audit import AuditLog, audit_action
 from .parsers import parse_text, parse_file, to_chunks
+from .memory import Memory, MemoryEvent
 
 __all__ = [
     "__version__",
@@ -65,6 +66,8 @@ __all__ = [
     "AuditLog", "audit_action",
     # parsers
     "parse_text", "parse_file", "to_chunks",
+    # memory
+    "Memory", "MemoryEvent",
     # submodules
     "inference", "guard", "rag", "parsers", "config", "audit",
 ]

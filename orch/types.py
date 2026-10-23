@@ -35,6 +35,8 @@ class ToolSpec:
     call: Callable[..., Any]
     timeout_s: float = 5.0
     network: bool = False  # True → braucht Netz (im Testpfad blockiert, M5)
+    limit_cpu: bool = True  # True → CPU-Grenze im Kind (RLIMIT_CPU, M5)
+    cpu_seconds: float = 5.0  # CPU-Sekunden-Limit pro Tool (M5)
     keywords: tuple[str, ...] = ()  # für Router-Keyword-Matching
 
 

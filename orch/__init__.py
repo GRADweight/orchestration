@@ -41,18 +41,34 @@ from .observer import LLMObserver, RuleObserver
 from .executor import Executor
 from .runner import AgentRunner
 from .tools import (
-    Sandbox,
     TimeLimit,
     ToolRegistry,
     registry,
     tool,
 )
+from .sandbox import (
+    Sandbox,
+    SandboxReport,
+    SandboxError,
+    ToolTimeout,
+    ToolCpuLimit,
+    ToolNetworkBlock,
+    ToolEscape,
+)
 from .memory import Memory
 from .approve import ApprovalGate, FreigabeEntscheid
 from .feedback import Annotation, FeedbackLoop
+from .example_tools import (
+    ocr_rechnung,
+    klassifiziere_email,
+    bexio_buchung,
+    web_search_proxy,
+    datei_leser,
+    build_specs,
+)
 
 __all__ = [
-    # M4
+    # M4 — Agent-Loop
     "AgentRunner",
     "RulePlanner",
     "LLMPlanner",
@@ -60,11 +76,25 @@ __all__ = [
     "Executor",
     "RuleObserver",
     "LLMObserver",
-    "Sandbox",
     "ToolRegistry",
     "registry",
     "tool",
-    # Typen
+    # M5 — Tool-Sandbox
+    "Sandbox",
+    "SandboxReport",
+    "SandboxError",
+    "ToolTimeout",
+    "ToolCpuLimit",
+    "ToolNetworkBlock",
+    "ToolEscape",
+    # M5 Beispiel-Tools (offline)
+    "ocr_rechnung",
+    "klassifiziere_email",
+    "bexio_buchung",
+    "web_search_proxy",
+    "datei_leser",
+    "build_specs",
+    # Typen (M4)
     "AgentResult",
     "Observation",
     "ObservationStatus",
@@ -75,9 +105,9 @@ __all__ = [
     "TaskStatus",
     "ToolResult",
     "ToolSpec",
-    # M6
+    # M6 — Memory (orch-Ring; canonical Memory in gw_shared_lib)
     "Memory",
-    # M7
+    # M7 — Human-in-the-Loop
     "ApprovalGate",
     "FreigabeEntscheid",
     "Annotation",
