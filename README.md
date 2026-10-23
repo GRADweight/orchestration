@@ -31,7 +31,7 @@ orchestration/
 ## Schnellstart (offline, kein Netz)
 
 ```bash
-cd ~/code/GRADweight/orchestration
+cd path/to/orchestration  # z.B. ~/code/GRADweight/orchestration
 
 # Setup
 uv venv --python 3.11 .venv && . .venv/bin/activate
