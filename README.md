@@ -31,7 +31,7 @@ orchestration/
 ## Schnellstart (offline, kein Netz)
 
 ```bash
-cd path/to/orchestration  # z.B. ~/code/GRADweight/orchestration
+cd path/to/orchestration  # z.B. <repo>/GRADweight/orchestration
 
 # Setup
 uv venv --python 3.11 .venv && . .venv/bin/activate
@@ -86,3 +86,7 @@ Annotationen korrekt gezählt, Eval-Set-Import funktioniert.
   (timeout + Netzwerk-Block), aber cgroup/CPU-Limit kommt erst mit M5.
 
 **Kontakt:** edin@gradweight.ch · gradweight.ch
+
+
+---
+> **Pruefen vor Public:** `SICHERHEIT_UND_GRENZEN.md` — Bekannte Fehler, Haftung, Lizenz-Erklaerung (ein Satz je Repo).
