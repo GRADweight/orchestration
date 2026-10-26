@@ -179,7 +179,7 @@ class ToolExecutor:
                 attempt = self._run_thread(tool, kwargs, limit)
             if attempt.ok or not attempt.transient or attempts > tool.retries:
                 break
-            self._sleep(min(2.0, self._retry_base * (2 ** (attempts - 1))))
+            self._sleep(min(2.0, self._retry_base * (2.0 ** (attempts - 1))))
         common: dict[str, Any] = {
             "duration_s": time.monotonic() - start,
             "attempts": attempts,

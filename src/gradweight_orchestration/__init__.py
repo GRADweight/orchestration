@@ -11,6 +11,14 @@ from .errors import (
     ValidationIssue,
 )
 from .execution import ErrorType, ToolError, ToolExecutor, ToolResult
+from .llm import (
+    ChatModel,
+    OpenAICompatClient,
+    RetryPolicy,
+    ScriptedLLM,
+    ScriptedTurn,
+    ToolCallingMode,
+)
 from .sandbox import (
     NetworkMode,
     SandboxCapabilities,
@@ -28,18 +36,24 @@ __version__ = "1.0.0"
 
 __all__ = [
     "ArgumentValidationError",
+    "ChatModel",
     "ErrorType",
     "Isolation",
     "NetworkMode",
+    "OpenAICompatClient",
     "OrchestrationError",
     "Param",
+    "RetryPolicy",
     "SandboxCapabilities",
     "SandboxLimits",
     "SandboxOutcome",
     "SandboxStatus",
     "SandboxUnavailableError",
+    "ScriptedLLM",
+    "ScriptedTurn",
     "SideEffect",
     "Tool",
+    "ToolCallingMode",
     "ToolDefinitionError",
     "ToolError",
     "ToolExecutor",
