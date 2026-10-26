@@ -1,92 +1,118 @@
-# CI fuer orchestration — M4-M7 (21.10.2026)
-#
-# CANONICAL-Bausteine sind in vendor/ (VENDOR, weil shared-lib und
-# autonomy PRIVAT sind, s. prototypen/M1-CI-FIX.md). PYTHONPATH zeigt
-# auf vendor/ => import gw_shared_lib und gw_core_subset ohne Netz,
-# ohne pip, ohne Secret.
-#
-# Matrix: Python 3.11, 3.12 (kein 3.9 — gw_core_subset braucht
-# `datetime.UTC`, 3.11+. Prototypen deckt 3.9, orchestration 3.11+.)
-
-name: orchestration-ci
+name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
-    env:
-      PYTHONPATH: "${{ github.workspace }}/vendor"
-    steps:
-      - uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+jobs:
+  lint:
+    name: Lint (ruff, mypy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Installieren
+        run: python -m pip install -e ".[dev]"
+      - name: ruff check
+        run: ruff check .
+      - name: ruff format --check
+        run: ruff format --check .
+      - name: mypy (strict)
+        run: mypy
+
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+        python-version: ["3.10", "3.12", "3.13"]
+        include:
+          - os: macos-14
+            python-version: "3.13"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Installieren
+        run: python -m pip install -e ".[dev]"
+      - name: Sandbox-Fähigkeiten dieser Plattform
+        run: python -c "import json, gradweight_orchestration as g; print(json.dumps(g.detect_capabilities().as_dict(), indent=2))"
+      - name: pytest mit Abdeckung (Schwelle in pyproject.toml)
+        run: python -m pytest --cov --cov-report=term-missing
 
-      - name: Install pytest
-        run: python -m pip install pytest
-
-      # --- DRIFT-GUARD #1: gw_shared_lib CANONICAL (s. prototypen M1) ---
-      - name: Vendor drift-guard (gw_shared_lib, CANONICAL)
+  package:
+    name: Paket (Wheel bauen, frisch installieren, Smoke)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Bauen
         run: |
-          [ -d vendor/gw_shared_lib ] || { echo "gw_shared_lib fehlt"; exit 1; }
-          python -c "import sys; sys.path.insert(0,'vendor'); from gw_shared_lib.guard import INJECTION_SIGNATURES as s; assert len(s)==16, f'DRIFT: {len(s)} != 16'; print('OK: INJECTION_SIGNATURES =', len(s))"
-
-      # --- DRIFT-GUARD #2: gw_core_subset CANONICAL (M7) ---
-      - name: Vendor drift-guard (gw_core_subset, CANONICAL)
+          python -m pip install build
+          python -m build
+      - name: Wheel enthält py.typed
+        run: python -m zipfile -l dist/*.whl | grep -q "gradweight_orchestration/py.typed"
+      - name: In frischem venv installieren
         run: |
-          [ -d vendor/gw_core_subset ] || { echo "gw_core_subset fehlt"; exit 1; }
-          python -c "import sys; sys.path.insert(0,'vendor'); from gw_core_subset.approval import ApprovalQueue as Q; assert all(hasattr(Q, m) for m in ('freigabe','zurueckstellen','anpassen','vorschlage')); print('OK: ApprovalQueue-Methode ok')"
-
-      - name: Compile-check
-        run: python -m compileall -q orch vendor
-
-      # --- DRIFT-GUARD #3: M5 Sandbox existiert (Tool-Sandbox, P1) ---
-      - name: M5 sandbox present
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
+      - name: Import-Smoke (ausserhalb des Quellbaums)
+        working-directory: ${{ runner.temp }}
         run: |
-          [ -f orch/sandbox.py ] || { echo "orch/sandbox.py fehlt"; exit 1; }
-          [ -f orch/example_tools.py ] || { echo "orch/example_tools.py fehlt"; exit 1; }
-          python -c "import sys; sys.path.insert(0,'vendor'); sys.path.insert(0,'.'); from orch.sandbox import Sandbox, ToolTimeout, ToolCpuLimit, ToolNetworkBlock, ToolEscape; print('OK: M5 Sandbox + Fehlerklassen')"
-
-      # --- DRIFT-GUARD #4: M6 canonical Memory (episodes, P2) ---
-      - name: M6 canonical Memory present
+          "$RUNNER_TEMP/venv/bin/python" -c "import gradweight_orchestration as g; print(g.__version__)"
+      - name: CLI-Smoke
+        working-directory: ${{ runner.temp }}
         run: |
-          [ -f vendor/gw_shared_lib/memory.py ] || { echo "gw_shared_lib/memory.py fehlt"; exit 1; }
-          python -c "import sys; sys.path.insert(0,'vendor'); from gw_shared_lib.memory import Memory; assert all(hasattr(Memory, m) for m in ('add','get','forget')), 'M6 Memory API fehlt'; print('OK: M6 Memory API (add/get/forget)')"
+          "$RUNNER_TEMP/venv/bin/gw-orchestration" --version
+          "$RUNNER_TEMP/venv/bin/gw-orchestration" sandbox-info
 
-      - name: Tests (35, grün)
-        run: python -m pytest tests/ -q
-
-      - name: M6 smoke (GAP_ANALYSE.md Abnahme)
+  security:
+    name: Sicherheit (gitleaks, pip-audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: gitleaks installieren (Binary mit Prüfsumme)
+        working-directory: ${{ runner.temp }}
         run: |
-          python -c "import sys,tempfile,pathlib; sys.path.insert(0,'vendor'); from gw_shared_lib.memory import Memory; m=Memory(str(pathlib.Path(tempfile.mkdtemp())/'smoke.jsonl')); m.add('test'); assert m.get('test',k=1)[0].event=='test'; print('OK: M6 smoke add->get')"
-
-      - name: Demo-Script
-        run: python -m examples.demo_rechnung
-
-      # --- Produktiv-Upgrade (deaktiviert, dokumentiert) ---
-      # Wenn feingranulierte PATs (SHARED_LIB_TOKEN + GW_CORE_TOKEN,
-      # scope: read, auf je beidem Repo) als github.com Secrets existieren:
-      #
-      #   - name: Checkout shared-lib (privat, CANONICAL via Secret)
-      #     uses: actions/checkout@v4
-      #     with:
-      #       repository: GRADweight/shared-lib
-      #       ref: f05457b4
-      #       path: _shared-lib
-      #       token: ${{ secrets.SHARED_LIB_TOKEN }}
-      #   - name: Checkout autonomy/gw_core (privat, CANONICAL via Secret)
-      #     uses: actions/checkout@v4
-      #     with:
-      #       repository: GRADweight/autonomy
-      #       path: _autonomy
-      #       token: ${{ secrets.GW_CORE_TOKEN }}
-      # +  PYTHONPATH: "${{ github.workspace }}/_shared-lib:${{ github.workspace}}/_autonomy/packages"
+          curl -sSfL -o gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: gitleaks (Git-Historie)
+        run: gitleaks git . --redact --verbose
+      - name: gitleaks (Arbeitsverzeichnis)
+        run: gitleaks dir . --redact --verbose
+      - name: pip-audit (Paket mit allen Extras)
+        run: |
+          python -m venv "$RUNNER_TEMP/audit"
+          "$RUNNER_TEMP/audit/bin/pip" install ".[httpx,otel]"
+          SITE=$("$RUNNER_TEMP/audit/bin/python" -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
+          uvx pip-audit --progress-spinner off --path "$SITE"

@@ -1,35 +1,126 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
 [project]
-name = "gw-orchestration"
-version = "0.1.0"
-description = "GRADweight Multi-Agent-Orchestrator (M4-M7): Planner->Router->Executor->Observer + Memory + Human-in-the-Loop."
+name = "gradweight-orchestration"
+dynamic = ["version"]
+description = "Kleine, prüfbare Agent-Runtime für lokale LLMs: echtes Tool-Calling, Governance mit Freigaben, Hash-Ketten-Audit und Subprozess-Isolation."
 readme = "README.md"
-requires-python = ">=3.11"
-license = { text = "MIT" }
-authors = [{ name = "GRADweight GmbH", email = "edin@gradweight.ch" }]
-keywords = ["agent", "orchestrator", "human-in-the-loop", "guardrails", "kmu"]
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "GRADweight GmbH", email = "mail@gradweight.ch" }]
+keywords = ["agent", "llm", "tool-calling", "ollama", "governance", "audit", "human-in-the-loop"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
 ]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+httpx = ["httpx>=0.27"]
+otel = ["opentelemetry-api>=1.27", "opentelemetry-sdk>=1.27"]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "hypothesis>=6.120",
+    "mypy>=1.15",
+    "ruff>=0.9",
+    "build>=1.2",
+    "httpx>=0.27",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+]
 
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+[project.scripts]
+gw-orchestration = "gradweight_orchestration.cli:main"
 
-[tool.setuptools]
-packages = ["orch"]
+[project.urls]
+Homepage = "https://github.com/GRADweight/orchestration"
+Issues = "https://github.com/GRADweight/orchestration/issues"
+Changelog = "https://github.com/GRADweight/orchestration/blob/main/CHANGELOG.md"
 
+[tool.hatch.version]
+path = "src/gradweight_orchestration/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gradweight_orchestration"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "docs", "README.md", "CHANGELOG.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md"]
+
+# ---------------------------------------------------------------- pytest ---
 [tool.pytest.ini_options]
-pythonpath = ["vendor", "."]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-ra --strict-markers --strict-config"
+xfail_strict = true
+filterwarnings = ["error"]
+markers = [
+    "sandbox: startet Subprozesse mit Ressourcenlimits (POSIX)",
+]
 
+# -------------------------------------------------------------- coverage ---
+[tool.coverage.run]
+source = ["gradweight_orchestration"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.$",
+]
+
+# ------------------------------------------------------------------ ruff ---
 [tool.ruff]
-line-length = 88
-target-version = "py311"
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "UP", "SIM", "RUF", "C4", "PT", "RET", "PERF",
+    "S", "N", "BLE", "TRY", "PIE", "PGH", "ISC", "LOG", "G", "T20",
+]
+ignore = [
+    "TRY003",  # ausführliche Fehlermeldungen sind hier gewollt
+    "RUF001",  # deutsche Typografie («», –) in Strings ist gewollt
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "S607", "S108", "T20", "BLE001", "PERF", "TRY"]
+"src/gradweight_orchestration/cli.py" = ["T20"]
+"src/gradweight_orchestration/demo/**" = ["T20"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ------------------------------------------------------------------ mypy ---
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src/gradweight_orchestration"]
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+[[tool.mypy.overrides]]
+module = ["opentelemetry.*", "httpx"]
+ignore_missing_imports = true
