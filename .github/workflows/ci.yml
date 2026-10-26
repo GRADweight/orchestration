@@ -49,10 +49,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Installieren
         run: python -m pip install -e ".[dev]"
-      - name: Sandbox-Fähigkeiten dieser Plattform
-        run: python -c "import json, gradweight_orchestration as g; print(json.dumps(g.detect_capabilities().as_dict(), indent=2))"
+      - name: Sandbox-Fähigkeiten dieser Plattform (als Hinweis-Annotation)
+        run: >-
+          python -c "import json, gradweight_orchestration as g;
+          print('::notice title=Sandbox-Fähigkeiten ${{ matrix.os }}::'
+          + json.dumps(g.detect_capabilities().as_dict(), ensure_ascii=False))"
       - name: pytest mit Abdeckung (Schwelle in pyproject.toml)
-        run: python -m pytest --cov --cov-report=term-missing
+        run: python -m pytest --cov --cov-report=term-missing --junitxml=pytest-junit.xml
+      - name: Fehlschläge als Annotationen
+        if: failure()
+        run: python .github/scripts/junit_annotations.py pytest-junit.xml
 
   package:
     name: Paket (Wheel bauen, frisch installieren, Smoke)

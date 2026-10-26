@@ -68,6 +68,11 @@ def apply_limits(limits: Mapping[str, Any]) -> dict[str, str]:
     return applied
 
 
+def failed_limits(applied: Mapping[str, str]) -> dict[str, str]:
+    """Limits, die nicht gesetzt werden konnten (bei ``strict`` ein Abbruchgrund)."""
+    return {k: v for k, v in applied.items() if v.startswith("fehlgeschlagen")}
+
+
 def resolve_target(target: Mapping[str, Any]) -> Callable[..., Any]:
     """Löst ``modul:qualname`` (oder ein Hauptskript) zu einer Funktion auf."""
     main_path = target.get("main_path")
@@ -123,7 +128,7 @@ def main(payload: Mapping[str, Any]) -> NoReturn:  # pragma: no cover - läuft i
     limits = payload["limits"]
     applied = apply_limits(limits)
     channel.emit({"event": "ready", "applied": dict(applied)})
-    failed = {k: v for k, v in applied.items() if v.startswith("fehlgeschlagen")}
+    failed = failed_limits(applied)
     if failed and limits.get("strict", True):
         channel.emit({"event": "sandbox_error", "message": f"Limits nicht gesetzt: {failed}"})
         os._exit(0)

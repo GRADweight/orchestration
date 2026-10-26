@@ -108,6 +108,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S603", "S607", "S108", "T20", "BLE001", "PERF", "TRY"]
 "src/gradweight_orchestration/cli.py" = ["T20"]
+".github/scripts/**" = ["T20"]
 "src/gradweight_orchestration/demo/**" = ["T20"]
 
 [tool.ruff.format]

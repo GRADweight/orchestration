@@ -145,7 +145,9 @@ def test_clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(env, dict)
     assert "GW_GEHEIMNIS" not in env
     assert env["GW_ERLAUBT"] == "1"
-    assert set(env) <= {
+    # macOS setzt in jedem Prozess __CF_USER_TEXT_ENCODING; das stammt nicht vom Elternprozess.
+    injected = {key for key in env if key.startswith("__CF")}
+    assert set(env) - injected <= {
         "PATH",
         "LANG",
         "LC_ALL",
@@ -263,10 +265,17 @@ def test_unknown_target_is_reported() -> None:
     assert outcome.error_type == "AttributeError"
 
 
+def test_strict_limit_decision() -> None:
+    assert child.failed_limits({"cpu_seconds": "10"}) == {}
+    failed = child.failed_limits({"cpu_seconds": "10", "open_files": "fehlgeschlagen: x"})
+    assert failed == {"open_files": "fehlgeschlagen: x"}
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="nr_open-Grenze ist Linux-eigen")
 def test_strict_limits_fail_closed() -> None:
     """Kann ein Limit nicht gesetzt werden, läuft das Werkzeug nicht (strict=True).
 
-    ``open_files`` über ``nr_open`` lässt der Kernel auch für root nicht zu.
+    ``open_files`` über ``nr_open`` lässt der Linux-Kernel auch für root nicht zu.
     """
     impossible = dataclasses.replace(LIMITS, open_files=10**9)
     outcome = run("add", limits=impossible, a=1, b=1)
