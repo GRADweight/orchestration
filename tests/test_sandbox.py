@@ -33,7 +33,9 @@ pytestmark = [
 ]
 
 CAPS = detect_capabilities()
-LIMITS = SandboxLimits(network=NetworkMode.DENY_IF_POSSIBLE)
+LIMITS = SandboxLimits(
+    network=NetworkMode.DENY_IF_POSSIBLE, memory_mb=512 if CAPS.rlimit_memory else None
+)
 
 
 def target(name: str) -> TargetRef:
@@ -49,7 +51,8 @@ def test_successful_call_reports_applied_limits() -> None:
     assert outcome.status is SandboxStatus.OK
     assert outcome.value == 5
     assert outcome.applied_limits["cpu_seconds"] == "10"
-    assert outcome.applied_limits["memory_bytes"] == str(512 * 1024 * 1024)
+    if CAPS.rlimit_memory:
+        assert outcome.applied_limits["memory_bytes"] == str(512 * 1024 * 1024)
     assert outcome.applied_limits["processes"] == "0"
     assert outcome.cpu_seconds >= 0
     assert outcome.report()["status"] == "ok"
@@ -109,6 +112,15 @@ def test_cpu_limit_stops_busy_loop() -> None:
     assert outcome.status is SandboxStatus.CPU_LIMIT
     assert time.monotonic() - started < 10.0
     assert outcome.cpu_seconds >= 0.9
+
+
+@pytest.mark.skipif(
+    sys.platform != "darwin", reason="prüft das macOS-Verhalten (RLIMIT_AS nicht setzbar)"
+)
+def test_memory_limit_fails_closed_on_macos() -> None:
+    outcome = run("add", limits=dataclasses.replace(LIMITS, memory_mb=256), a=1, b=1)
+    assert outcome.status is SandboxStatus.SANDBOX_ERROR
+    assert "memory_mb=None" in outcome.message
 
 
 @pytest.mark.skipif(not CAPS.rlimit_memory, reason="RLIMIT_AS wird hier nicht zugesichert")

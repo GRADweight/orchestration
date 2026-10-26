@@ -60,6 +60,34 @@ jobs:
         if: failure()
         run: python .github/scripts/junit_annotations.py pytest-junit.xml
 
+  sandbox-linux:
+    name: Sandbox-Nachweise Linux (Namespaces, root)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Installieren
+        run: python -m pip install -e ".[dev]"
+      # Ubuntu 24.04 sperrt unprivilegierte User-Namespaces per AppArmor. Für den
+      # Nachweis der Netzwerk-/PID-Isolation wird die Sperre nur in diesem Job gelöst.
+      - name: Unprivilegierte User-Namespaces erlauben (nur Testumgebung)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Sandbox-Tests als normaler Benutzer (mit Namespaces)
+        run: python -m pytest tests/test_sandbox.py tests/test_execution.py -ra --junitxml=sandbox-user.xml
+      - name: Sandbox-Tests als root (run_as_user, Namespaces ohne User-Namespace)
+        run: sudo "$(command -v python)" -m pytest tests/test_sandbox.py -ra -p no:cacheprovider --junitxml=sandbox-root.xml
+      - name: Fehlschläge als Annotationen
+        if: failure()
+        run: |
+          for f in sandbox-user.xml sandbox-root.xml; do
+            [ -f "$f" ] && python .github/scripts/junit_annotations.py "$f" || true
+          done
+
   package:
     name: Paket (Wheel bauen, frisch installieren, Smoke)
     runs-on: ubuntu-24.04

@@ -130,7 +130,11 @@ def main(payload: Mapping[str, Any]) -> NoReturn:  # pragma: no cover - läuft i
     channel.emit({"event": "ready", "applied": dict(applied)})
     failed = failed_limits(applied)
     if failed and limits.get("strict", True):
-        channel.emit({"event": "sandbox_error", "message": f"Limits nicht gesetzt: {failed}"})
+        hint = (
+            " – auf dieser Plattform nicht durchsetzbar; Limit weglassen (z.B. memory_mb=None) "
+            "oder strict=False für bewusst unvollständige Isolation"
+        )
+        channel.emit({"event": "sandbox_error", "message": f"Limits nicht gesetzt: {failed}{hint}"})
         os._exit(0)
     message = execute(payload["target"], payload["arguments"])
     with contextlib.suppress(OSError, ValueError):  # os._exit leert keine Puffer

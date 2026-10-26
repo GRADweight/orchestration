@@ -13,7 +13,14 @@ import time
 from dataclasses import dataclass
 from decimal import Decimal
 
-from gradweight_orchestration import Isolation, NetworkMode, SandboxLimits, SideEffect, tool
+from gradweight_orchestration import (
+    Isolation,
+    NetworkMode,
+    SandboxLimits,
+    SideEffect,
+    detect_capabilities,
+    tool,
+)
 from gradweight_orchestration.errors import TransientToolError
 
 
@@ -114,8 +121,12 @@ def flaky(counter: str) -> str:
     return "zweiter Versuch"
 
 
-# Plattformneutral: isolieren, wo möglich (CI auf macOS hat keine Namespaces).
-LIMITS = SandboxLimits(network=NetworkMode.DENY_IF_POSSIBLE)
+# Plattformneutral: Netz isolieren, wo möglich; Speicherlimit nur, wo der Kernel es
+# durchsetzt (macOS lehnt RLIMIT_AS ab – mit Limit würde die Sandbox fail-closed abbrechen).
+LIMITS = SandboxLimits(
+    network=NetworkMode.DENY_IF_POSSIBLE,
+    memory_mb=512 if detect_capabilities().rlimit_memory else None,
+)
 
 
 @dataclass(frozen=True)
