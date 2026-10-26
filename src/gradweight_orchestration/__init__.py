@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from .approvals import ApprovalQueue, ApprovalRequest, ApprovalStatus
+from .audit import AuditLog, AuditRecord, Redactor, VerifyResult
+from .budget import Budget, BudgetState, Pricing
 from .errors import (
     ArgumentValidationError,
     OrchestrationError,
@@ -11,6 +14,7 @@ from .errors import (
     ValidationIssue,
 )
 from .execution import ErrorType, ToolError, ToolExecutor, ToolResult
+from .governance import AutonomyGrade, Decision, Policy, PolicyDecision, format_amount
 from .llm import (
     ChatModel,
     OpenAICompatClient,
@@ -19,6 +23,7 @@ from .llm import (
     ScriptedTurn,
     ToolCallingMode,
 )
+from .memory import ConversationWindow, LongTermMemory, MemoryNote, memory_tools
 from .sandbox import (
     NetworkMode,
     SandboxCapabilities,
@@ -30,19 +35,36 @@ from .sandbox import (
 )
 from .schema import Param, function_schema, json_schema
 from .tools import Isolation, SideEffect, Tool, ToolRegistry, tool
+from .tracing import Span, Tracer
 from .validation import from_jsonable, validate
 
 __version__ = "1.0.0"
 
 __all__ = [
+    "ApprovalQueue",
+    "ApprovalRequest",
+    "ApprovalStatus",
     "ArgumentValidationError",
+    "AuditLog",
+    "AuditRecord",
+    "AutonomyGrade",
+    "Budget",
+    "BudgetState",
     "ChatModel",
+    "ConversationWindow",
+    "Decision",
     "ErrorType",
     "Isolation",
+    "LongTermMemory",
+    "MemoryNote",
     "NetworkMode",
     "OpenAICompatClient",
     "OrchestrationError",
     "Param",
+    "Policy",
+    "PolicyDecision",
+    "Pricing",
+    "Redactor",
     "RetryPolicy",
     "SandboxCapabilities",
     "SandboxLimits",
@@ -52,6 +74,7 @@ __all__ = [
     "ScriptedLLM",
     "ScriptedTurn",
     "SideEffect",
+    "Span",
     "Tool",
     "ToolCallingMode",
     "ToolDefinitionError",
@@ -59,13 +82,17 @@ __all__ = [
     "ToolExecutor",
     "ToolRegistry",
     "ToolResult",
+    "Tracer",
     "TransientToolError",
     "ValidationIssue",
+    "VerifyResult",
     "__version__",
     "detect_capabilities",
+    "format_amount",
     "from_jsonable",
     "function_schema",
     "json_schema",
+    "memory_tools",
     "run_sandboxed",
     "tool",
     "validate",
