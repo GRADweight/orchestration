@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "GRADweight Multi-Agent-Orchestrator (M4-M7): Planner->Router->Executor->Observer + Memory + Human-in-the-Loop."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Proprietary - GRADweight GmbH" }
+license = { text = "MIT" }
 authors = [{ name = "GRADweight GmbH", email = "edin@gradweight.ch" }]
 keywords = ["agent", "orchestrator", "human-in-the-loop", "guardrails", "kmu"]
 classifiers = [
