@@ -31,7 +31,7 @@ from .validation import from_jsonable, validate
 __all__ = ["ErrorType", "ToolError", "ToolExecutor", "ToolResult"]
 
 
-class ErrorType(str, enum.Enum):
+class ErrorType(enum.StrEnum):
     """Fehlerklassen, die das Modell in Beobachtungen sieht."""
 
     VALIDATION = "validation_error"

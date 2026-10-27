@@ -1,4 +1,9 @@
-"""Meldet fehlgeschlagene Tests aus einer JUnit-XML-Datei als GitHub-Annotationen."""
+"""Meldet Testergebnisse aus einer JUnit-XML-Datei als GitHub-Annotationen.
+
+Ohne Option: jeder Fehlschlag als ``::error``; Rückgabe 1, wenn es welche gibt.
+Mit ``--skipped``: übersprungene Tests samt Grund als eine ``::notice`` (Nachweis, was auf
+welcher Plattform nicht geprüft werden konnte).
+"""
 
 from __future__ import annotations
 
@@ -10,20 +15,34 @@ def _escape(text: str) -> str:
     return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
-def main(path: str) -> int:
+def main(path: str, *, skipped: bool, title: str) -> int:
     root = ET.parse(path).getroot()  # noqa: S314 - eigene, lokal erzeugte Datei
-    count = 0
+    failures = 0
+    skips: list[str] = []
     for case in root.iter("testcase"):
+        name = f"{case.get('classname', '')}.{case.get('name', '')}"
         for kind in ("failure", "error"):
             node = case.find(kind)
-            if node is None:
-                continue
-            title = f"{case.get('classname', '')}.{case.get('name', '')}"
-            detail = (node.get("message") or "") + "\n" + (node.text or "")[-1500:]
-            print(f"::error title={_escape(title)}::{_escape(detail.strip())}")
-            count += 1
-    return 0 if count == 0 else 1
+            if node is not None and not skipped:
+                detail = (node.get("message") or "") + "\n" + (node.text or "")[-1500:]
+                print(f"::error title={_escape(name)}::{_escape(detail.strip())}")
+                failures += 1
+        node = case.find("skipped")
+        if node is not None:
+            skips.append(f"{case.get('name', '')}: {node.get('message', '')}")
+    if skipped:
+        text = "\n".join(skips) if skips else "keine"
+        print(f"::notice title={_escape(title)}::{_escape(text)}")
+        return 0
+    return 0 if failures == 0 else 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1]))
+    args = sys.argv[1:]
+    want_skipped = "--skipped" in args
+    rest = [a for a in args if a != "--skipped"]
+    raise SystemExit(
+        main(
+            rest[0], skipped=want_skipped, title=rest[1] if len(rest) > 1 else "Übersprungene Tests"
+        )
+    )

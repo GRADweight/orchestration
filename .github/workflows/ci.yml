@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        python-version: ["3.10", "3.12", "3.13"]
+        python-version: ["3.11", "3.13", "3.14"]
         include:
           - os: macos-14
             python-version: "3.13"
@@ -59,6 +59,9 @@ jobs:
       - name: Fehlschläge als Annotationen
         if: failure()
         run: python .github/scripts/junit_annotations.py pytest-junit.xml
+      - name: Übersprungene Tests als Hinweis
+        if: always()
+        run: python .github/scripts/junit_annotations.py pytest-junit.xml --skipped "Übersprungen (${{ matrix.os }}, ${{ matrix.python-version }})"
 
   sandbox-linux:
     name: Sandbox-Nachweise Linux (Namespaces, root)
@@ -94,6 +97,11 @@ jobs:
           for f in sandbox-user.xml sandbox-root.xml; do
             [ -f "$f" ] && python .github/scripts/junit_annotations.py "$f" || true
           done
+      - name: Übersprungene Sandbox-Tests als Hinweis
+        if: always()
+        run: |
+          python .github/scripts/junit_annotations.py sandbox-user.xml --skipped "Übersprungen (Namespaces, Benutzer)"
+          python .github/scripts/junit_annotations.py sandbox-root.xml --skipped "Übersprungen (Namespaces, root)"
 
   package:
     name: Paket (Wheel bauen, frisch installieren, Smoke)
@@ -111,7 +119,10 @@ jobs:
           python -m pip install build
           python -m build
       - name: Wheel enthält py.typed
-        run: python -m zipfile -l dist/*.whl | grep -q "gradweight_orchestration/py.typed"
+        run: >-
+          python -c "import glob, sys, zipfile;
+          names = zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist();
+          sys.exit(0 if 'gradweight_orchestration/py.typed' in names else 1)"
       - name: In frischem venv installieren
         run: |
           python -m venv "$RUNNER_TEMP/venv"
@@ -125,6 +136,14 @@ jobs:
         run: |
           "$RUNNER_TEMP/venv/bin/gw-orchestration" --version
           "$RUNNER_TEMP/venv/bin/gw-orchestration" sandbox-info
+      - name: Tests aus dem sdist (enthält alles, was die Tests brauchen)
+        run: |
+          mkdir "$RUNNER_TEMP/sdist"
+          tar -xzf dist/*.tar.gz -C "$RUNNER_TEMP/sdist"
+          python -m venv "$RUNNER_TEMP/sdist-venv"
+          cd "$RUNNER_TEMP"/sdist/gradweight_orchestration-*
+          "$RUNNER_TEMP/sdist-venv/bin/pip" install ".[dev]"
+          "$RUNNER_TEMP/sdist-venv/bin/python" -m pytest -q -p no:cacheprovider
       - name: Demo aus dem installierten Wheel (offline, Skript-Modell) und Audit-Prüfung
         working-directory: ${{ runner.temp }}
         run: |

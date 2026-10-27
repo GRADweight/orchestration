@@ -99,8 +99,9 @@ class UrllibTransport:
                     body=response.read(),
                 )
         except urllib.error.HTTPError as exc:
-            headers_ = {k.lower(): v for k, v in exc.headers.items()} if exc.headers else {}
-            return HTTPResponse(status=exc.code, headers=headers_, body=exc.read() or b"")
+            with exc:  # HTTPError hält die Antwort offen; schliessen, sonst ResourceWarning
+                headers_ = {k.lower(): v for k, v in exc.headers.items()} if exc.headers else {}
+                return HTTPResponse(status=exc.code, headers=headers_, body=exc.read() or b"")
         except (urllib.error.URLError, http.client.HTTPException, OSError) as exc:
             raise LLMTransportError(f"Verbindung zu {url} fehlgeschlagen: {exc}") from exc
 

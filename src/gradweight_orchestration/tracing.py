@@ -154,7 +154,7 @@ class Tracer:
             for exporter in self._exporters:
                 try:
                     exporter(span)
-                except Exception:  # noqa: BLE001, PERF203 - Export darf den Lauf nicht stoppen
+                except Exception:  # noqa: BLE001 - Export darf den Lauf nicht stoppen
                     self.export_errors += 1
 
     @property

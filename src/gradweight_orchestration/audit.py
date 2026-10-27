@@ -44,7 +44,7 @@ GENESIS = "0" * 64
 
 
 def _utcnow() -> _dt.datetime:
-    return _dt.datetime.now(_dt.timezone.utc)
+    return _dt.datetime.now(_dt.UTC)
 
 
 def _luhn(digits: str) -> bool:
@@ -311,7 +311,7 @@ class AuditLog:
             for line in cls._lines(Path(path)):
                 try:
                     yield json.loads(line)
-                except json.JSONDecodeError:  # noqa: PERF203 - jede Zeile einzeln prüfen
+                except json.JSONDecodeError:
                     yield None
 
         return _verify_rows(rows(), key)

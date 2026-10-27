@@ -63,7 +63,7 @@ _LABELS = {
 }
 
 
-class Decision(str, enum.Enum):
+class Decision(enum.StrEnum):
     ALLOW = "allow"
     REQUIRE_APPROVAL = "require_approval"
     DENY = "deny"

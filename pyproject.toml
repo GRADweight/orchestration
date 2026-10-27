@@ -7,7 +7,7 @@ name = "gradweight-orchestration"
 dynamic = ["version"]
 description = "Kleine, prüfbare Agent-Runtime für lokale LLMs: echtes Tool-Calling, Governance mit Freigaben, Hash-Ketten-Audit und Subprozess-Isolation."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "GRADweight GmbH", email = "mail@gradweight.ch" }]
@@ -19,10 +19,10 @@ classifiers = [
     "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed",
 ]
@@ -90,7 +90,7 @@ exclude_also = [
 # ------------------------------------------------------------------ ruff ---
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -116,7 +116,7 @@ quote-style = "double"
 
 # ------------------------------------------------------------------ mypy ---
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 strict = true
 files = ["src/gradweight_orchestration"]
 warn_unreachable = true

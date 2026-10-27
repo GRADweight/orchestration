@@ -36,7 +36,7 @@ R = TypeVar("R")
 _NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
-class SideEffect(str, enum.Enum):
+class SideEffect(enum.StrEnum):
     """Wirkung eines Werkzeugs nach aussen – Grundlage der Freigabe-Policy."""
 
     READ_ONLY = "read_only"
@@ -61,7 +61,7 @@ _RANK = {
 }
 
 
-class Isolation(str, enum.Enum):
+class Isolation(enum.StrEnum):
     """Wie ein Werkzeug ausgeführt wird."""
 
     THREAD = "thread"

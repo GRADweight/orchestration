@@ -59,7 +59,7 @@ REPAIR_PROMPT = (
 )
 
 
-class ToolCallingMode(str, enum.Enum):
+class ToolCallingMode(enum.StrEnum):
     AUTO = "auto"
     """Nativ beginnen; meldet der Server fehlende Tool-Unterstützung, auf JSON wechseln."""
     NATIVE = "native"

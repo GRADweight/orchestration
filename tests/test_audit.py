@@ -115,7 +115,7 @@ def test_concurrent_processes_keep_chain_intact(tmp_path: Path) -> None:
 
 
 def test_clock_and_redaction_in_log() -> None:
-    fixed = dt.datetime(2026, 10, 26, 12, 0, tzinfo=dt.timezone.utc)
+    fixed = dt.datetime(2026, 10, 26, 12, 0, tzinfo=dt.UTC)
     log = AuditLog(redactor=Redactor(), clock=lambda: fixed)
     record = log.append("llm_response", {"text": "IBAN CH93 0076 2011 6238 5295 7", "token": "x"})
     assert record.ts.startswith("2026-10-26T12:00:00")
@@ -125,7 +125,7 @@ def test_clock_and_redaction_in_log() -> None:
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("Mail an anna.muster@example.ch bitte", "Mail an [EMAIL] bitte"),
+        ("Mail an anna.muster@example.com bitte", "Mail an [EMAIL] bitte"),
         ("IBAN CH93 0076 2011 6238 5295 7.", "IBAN [IBAN]."),
         ("IBAN CH9300762011623852957", "IBAN [IBAN]"),
         ("AHV 756.1234.5678.97", "AHV [AHV]"),
@@ -144,11 +144,11 @@ def test_redactor_hash_mode() -> None:
     with pytest.raises(ValueError, match="key"):
         Redactor(mode="hash")
     redactor = Redactor(mode="hash", key=b"k")
-    first = redactor.text("anna@example.ch")
+    first = redactor.text("anna@example.com")
     assert re.fullmatch(r"\[EMAIL:[0-9a-f]{10}\]", first)
-    assert redactor.text("anna@example.ch") == first
-    assert redactor.text("bruno@example.ch") != first
-    assert redactor({"a": ["anna@example.ch", 1], "Password": "x"}) == {
+    assert redactor.text("anna@example.com") == first
+    assert redactor.text("bruno@example.com") != first
+    assert redactor({"a": ["anna@example.com", 1], "Password": "x"}) == {
         "a": [first, 1],
         "Password": "[ENTFERNT]",
     }

@@ -7,6 +7,9 @@ Befehle:
 * ``audit-verify PFAD`` – Hash-Kette eines Audit-Logs prüfen
 * ``approvals list|approve|reject`` – Freigaben bearbeiten (SQLite-Datei)
 * ``demo`` – Kreditoren-Demo (offline mit Skript-Modell oder gegen Ollama)
+
+Exit-Codes: 0 Erfolg, 1 fachlicher Befund (z.B. Audit-Kette gebrochen), 2 Bedien- oder
+Eingabefehler (Meldung auf stderr, kein Traceback).
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ import argparse
 import importlib
 import json
 import os
+import sqlite3
 import sys
 from collections.abc import Sequence
 
@@ -26,12 +30,16 @@ from .sandbox import detect_capabilities
 from .tools import Tool
 
 
+class UsageError(Exception):
+    """Bedien- oder Eingabefehler; wird als Meldung mit Exit-Code 2 ausgegeben."""
+
+
 def _key(env_name: str | None) -> bytes | None:
     if not env_name:
         return None
     value = os.environ.get(env_name)
     if not value:
-        raise SystemExit(f"Umgebungsvariable {env_name} ist nicht gesetzt")
+        raise UsageError(f"Umgebungsvariable {env_name} ist nicht gesetzt")
     return value.encode("utf-8")
 
 
@@ -45,9 +53,12 @@ def _cmd_schema(args: argparse.Namespace) -> int:
     if not attr:
         print("Erwartet MODUL:NAME, z.B. meinpaket.werkzeuge:rechnung_lesen", file=sys.stderr)
         return 2
-    obj = importlib.import_module(module_name)
-    for part in attr.split("."):
-        obj = getattr(obj, part)
+    try:
+        obj = importlib.import_module(module_name)
+        for part in attr.split("."):
+            obj = getattr(obj, part)
+    except (ImportError, AttributeError) as exc:
+        raise UsageError(f"{args.target} nicht gefunden: {exc}") from exc
     if not isinstance(obj, Tool):
         print(f"{args.target} ist kein mit @tool dekoriertes Werkzeug", file=sys.stderr)
         return 2
@@ -145,12 +156,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if arguments[:1] == ["demo"]:  # eigene Optionen; argparse.REMAINDER schluckt "--x" nicht
-        from .demo import main as demo_main
+    try:
+        if arguments[:1] == ["demo"]:  # eigene Optionen; argparse.REMAINDER schluckt "--x" nicht
+            from .demo import main as demo_main
 
-        return demo_main(arguments[1:])
-    args = build_parser().parse_args(arguments)
-    code: int = args.func(args)
+            return demo_main(arguments[1:])
+        args = build_parser().parse_args(arguments)
+        code: int = args.func(args)
+    except UsageError as exc:
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 2
+    except (OSError, sqlite3.Error) as exc:  # Datei fehlt, Ordner nicht beschreibbar ...
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return 2
     return code
 
 

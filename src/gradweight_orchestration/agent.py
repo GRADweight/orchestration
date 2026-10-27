@@ -76,7 +76,7 @@ REPLAN_HINT = (
 EMPTY_HINT = "Hinweis: Deine Antwort war leer. Rufe ein Werkzeug auf oder gib eine Antwort."
 
 
-class RunStatus(str, enum.Enum):
+class RunStatus(enum.StrEnum):
     COMPLETED = "completed"
     PAUSED = "paused"
     STOPPED = "stopped"

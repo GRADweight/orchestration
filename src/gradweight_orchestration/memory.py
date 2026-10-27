@@ -140,7 +140,7 @@ class LongTermMemory:
     k1: float = 1.5
     b: float = 0.75
     clock: Callable[[], str] = field(
-        default=lambda: _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+        default=lambda: _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds")
     )
 
     def __post_init__(self) -> None:

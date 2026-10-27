@@ -56,8 +56,8 @@ def test_audit_verify(tmp_path, capsys: pytest.CaptureFixture[str], monkeypatch)
     assert main(["audit-verify", str(path)]) == 1  # ohne Schlüssel stimmt kein HMAC
     assert "FEHLER" in capsys.readouterr().out
     monkeypatch.delenv("GW_AUDIT_KEY")
-    with pytest.raises(SystemExit, match="GW_AUDIT_KEY"):
-        main(["audit-verify", str(path), "--key-env", "GW_AUDIT_KEY"])
+    assert main(["audit-verify", str(path), "--key-env", "GW_AUDIT_KEY"]) == 2
+    assert "GW_AUDIT_KEY ist nicht gesetzt" in capsys.readouterr().err
 
 
 def test_approvals_commands(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:  # type: ignore[no-untyped-def]
@@ -90,3 +90,38 @@ def test_approvals_commands(tmp_path, capsys: pytest.CaptureFixture[str]) -> Non
     assert main(["approvals", "approve", "a2", "--db", db, "--by", "cfo"]) == 1
     assert "bereits entschieden" in capsys.readouterr().err
     assert AuditLog(log).verify().count == 1
+
+
+def test_input_errors_exit_with_code_2_without_traceback(
+    tmp_path,
+    capsys: pytest.CaptureFixture[str],  # type: ignore[no-untyped-def]
+) -> None:
+    cases = [
+        ["schema", "gibt_es_nicht:werkzeug"],
+        ["schema", "sandbox_tools:gibt_es_nicht"],
+        ["audit-verify", str(tmp_path / "fehlt.jsonl")],
+        ["approvals", "list", "--db", str(tmp_path / "kein" / "ordner" / "f.sqlite")],
+    ]
+    for argv in cases:
+        assert main(argv) == 2, argv
+        err = capsys.readouterr().err
+        assert err.startswith("Fehler:"), argv
+        assert "Traceback" not in err
+    datei = tmp_path / "datei"
+    datei.write_text("x", encoding="utf-8")
+    assert main(["demo", "--ausgabe", str(datei)]) == 2
+    assert "Fehler:" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as info:  # argparse: Exit-Code 2 mit Meldung
+        main(["approvals", "approve"])
+    assert info.value.code == 2
+
+
+def test_console_script_reports_errors_cleanly() -> None:
+    completed = subprocess.run(
+        [sys.executable, "-m", "gradweight_orchestration", "audit-verify", "/gibt/es/nicht"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 2
+    assert "Traceback" not in completed.stderr

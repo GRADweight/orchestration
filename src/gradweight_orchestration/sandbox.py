@@ -66,7 +66,7 @@ _BOOTSTRAP = (
 )
 
 
-class NetworkMode(str, enum.Enum):
+class NetworkMode(enum.StrEnum):
     """Netzwerkzugriff für den Kindprozess."""
 
     ALLOW = "allow"
@@ -216,7 +216,7 @@ def detect_capabilities(*, refresh: bool = False) -> SandboxCapabilities:
     return _detect()
 
 
-class SandboxStatus(str, enum.Enum):
+class SandboxStatus(enum.StrEnum):
     OK = "ok"
     ERROR = "error"
     TIMEOUT = "timeout"

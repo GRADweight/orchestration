@@ -58,7 +58,7 @@ _COLUMNS = (
 )
 
 
-class ApprovalStatus(str, enum.Enum):
+class ApprovalStatus(enum.StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     MODIFIED = "approved_with_changes"
@@ -115,7 +115,7 @@ class ApprovalRequest:
 
 
 def _now() -> str:
-    return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+    return _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds")
 
 
 def _row_to_request(row: tuple[Any, ...]) -> ApprovalRequest:

@@ -594,7 +594,7 @@ def test_window_and_long_term_memory() -> None:
     llm = ScriptedLLM(
         [
             *[ScriptedTurn.call("kaputt", {"versuch": i}) for i in range(6)],
-            ScriptedTurn.final("Muster AG erledigt, Kontakt anna@example.ch"),
+            ScriptedTurn.final("Muster AG erledigt, Kontakt anna@example.com"),
         ]
     )
     agent = make_agent(
