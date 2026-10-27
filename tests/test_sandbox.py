@@ -242,7 +242,7 @@ def test_deny_fails_closed_without_namespace() -> None:
         target("add"),
         {"a": 1, "b": 2},
         timeout_s=5,
-        limits=SandboxLimits(network=NetworkMode.DENY_IF_POSSIBLE),
+        limits=dataclasses.replace(LIMITS, network=NetworkMode.DENY_IF_POSSIBLE),
         capabilities=caps,
     )
     assert outcome.ok
@@ -299,16 +299,28 @@ def test_strict_limits_fail_closed() -> None:
     assert outcome.applied_limits["open_files"].startswith("fehlgeschlagen")
 
 
-def _world_executable(path: str) -> bool:
-    """Kann ein fremder Benutzer den Interpreter starten (alle Ordner o+x)?"""
-    real = Path(path).resolve()
-    return all(p.stat().st_mode & 0o001 for p in [real, *real.parents])
+def _world_accessible(*paths: str) -> bool:
+    """Darf ein fremder Benutzer Interpreter, Paket und Testmodule erreichen (o+x)?"""
+    for path in paths:
+        real = Path(path).resolve()
+        if not all(p.stat().st_mode & 0o001 for p in [real, *real.parents] if p.is_dir()):
+            return False
+        if real.is_file() and not real.stat().st_mode & 0o004 and not os.access(real, os.X_OK):
+            return False
+    return True
+
+
+_FOREIGN_USER_OK = _world_accessible(
+    sys.executable,
+    str(Path(child.__file__).parent),
+    str(Path(__file__).parent),
+)
 
 
 @pytest.mark.skipif(not CAPS.is_root, reason="run_as_user braucht root")
 @pytest.mark.skipif(
-    not _world_executable(sys.executable),
-    reason="Interpreter liegt in einem Ordner, den nobody nicht betreten darf",
+    not _FOREIGN_USER_OK,
+    reason="Interpreter, Paket oder Tests liegen in Ordnern, die nobody nicht betreten darf",
 )
 def test_run_as_unprivileged_user(tmp_path: Path) -> None:
     secret = tmp_path / "nur-root.txt"

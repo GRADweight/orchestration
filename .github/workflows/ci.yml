@@ -79,6 +79,13 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Sandbox-Tests als normaler Benutzer (mit Namespaces)
         run: python -m pytest tests/test_sandbox.py tests/test_execution.py -ra --junitxml=sandbox-user.xml
+      # Für den run_as_user-Test muss "nobody" Paket und Tests lesen können; das
+      # Home-Verzeichnis des Runners ist sonst nicht durchsuchbar.
+      - name: Arbeitsverzeichnis für nobody erreichbar machen (nur Testumgebung)
+        run: |
+          chmod -R o+rX "$GITHUB_WORKSPACE"
+          p="$GITHUB_WORKSPACE"
+          while [ "$p" != "/" ]; do sudo chmod o+x "$p"; p=$(dirname "$p"); done
       - name: Sandbox-Tests als root (run_as_user, Namespaces ohne User-Namespace)
         run: sudo "$(command -v python)" -m pytest tests/test_sandbox.py -ra -p no:cacheprovider --junitxml=sandbox-root.xml
       - name: Fehlschläge als Annotationen
