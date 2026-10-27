@@ -125,6 +125,11 @@ jobs:
         run: |
           "$RUNNER_TEMP/venv/bin/gw-orchestration" --version
           "$RUNNER_TEMP/venv/bin/gw-orchestration" sandbox-info
+      - name: Demo aus dem installierten Wheel (offline, Skript-Modell) und Audit-Prüfung
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/venv/bin/gw-orchestration" demo --ausgabe "$RUNNER_TEMP/demo"
+          "$RUNNER_TEMP/venv/bin/gw-orchestration" audit-verify "$RUNNER_TEMP/demo/audit.jsonl"
 
   security:
     name: Sicherheit (gitleaks, pip-audit)

@@ -6,6 +6,7 @@ Befehle:
 * ``schema MODUL:NAME`` – Werkzeug-Schema, wie es das Modell sieht
 * ``audit-verify PFAD`` – Hash-Kette eines Audit-Logs prüfen
 * ``approvals list|approve|reject`` – Freigaben bearbeiten (SQLite-Datei)
+* ``demo`` – Kreditoren-Demo (offline mit Skript-Modell oder gegen Ollama)
 """
 
 from __future__ import annotations
@@ -136,11 +137,19 @@ def build_parser() -> argparse.ArgumentParser:
             action.add_argument("--reason", required=True)
         action.set_defaults(func=_cmd_approvals_decide)
 
+    sub.add_parser(
+        "demo", help="Kreditoren-Demo (Optionen: gw-orchestration demo -h)", add_help=False
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ["demo"]:  # eigene Optionen; argparse.REMAINDER schluckt "--x" nicht
+        from .demo import main as demo_main
+
+        return demo_main(arguments[1:])
+    args = build_parser().parse_args(arguments)
     code: int = args.func(args)
     return code
 
