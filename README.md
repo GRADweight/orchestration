@@ -27,8 +27,8 @@ zum Beispiel Kreditorenrechnungen über einem Mandatslimit.
   ein Modell in den Text statt ins `tool_calls`-Feld schreibt.
 - **Governance im Kern:** Seiteneffekt pro Werkzeug, Autonomiegrad 01–05, Mandatslimit,
   Freigabe-Warteschlange mit Pause und Fortsetzung, hash-verkettetes Audit-Log.
-- **Ehrliche Isolation:** erzwungene Zeitlimits, Subprozess mit Ressourcenlimits; die
-  Garantien stehen unten pro Plattform, jede mit Test.
+- **Ehrliche Isolation:** erzwungene Zeitlimits, Subprozess mit Ressourcenlimits; was pro
+  Plattform gilt und was nicht, steht unten – jeweils mit dem Test, der es nachweist.
 - **Ohne Laufzeit-Abhängigkeiten:** nur Standardbibliothek; `httpx` und OpenTelemetry sind
   optionale Extras.
 
@@ -184,8 +184,8 @@ assert spec["function"]["parameters"]["properties"]["betrag"] == {"type": "numbe
 
 Die Validierung ist bewusst streng: `"1081.00"` ist kein `number`. Das Modell erhält die
 Befunde mit JSON-Pfad (`$.betrag: erwartet number, erhalten string '1081.00'`) und einen
-Hinweis zur Neuplanung; kleine Modelle korrigieren das meist im nächsten Schritt. Nach
-`max_consecutive_errors` Fehlschritten oder bei wiederholt identischen Aufrufen stoppt der Lauf.
+Hinweis zur Neuplanung, damit es den Aufruf korrigieren kann. Nach `max_consecutive_errors`
+Fehlschritten oder bei wiederholt identischen Aufrufen stoppt der Lauf.
 
 `gw-orchestration schema modul:werkzeug` zeigt das Schema, wie es das Modell sieht.
 
@@ -204,8 +204,9 @@ pro Socket-Operation; die Gesamtdauer begrenzt das Zeitbudget des Agenten.
 
 ## Governance und Freigaben
 
-Die Policy verbindet den Autonomiegrad (Begriffe aus dem GRADweight-Autonomiemodell) mit dem
-deklarierten Seiteneffekt. Die Zuordnung ist eine Designentscheidung dieser Runtime, kein
+Die Policy verbindet den Autonomiegrad (Begriffe aus dem
+[GRADweight-Autonomiemodell](https://github.com/GRADweight/autonomy)) mit dem deklarierten
+Seiteneffekt. Die Zuordnung ist eine Designentscheidung dieser Runtime, kein
 Standard; sie wird in den Tests gegen den Code geprüft:
 
 | Grad | lesend | umkehrbar | irreversibel | Geld |
@@ -262,9 +263,9 @@ Hintergrund weiter und wird gezählt (`ToolExecutor.abandoned_threads`). Im **Pr
 | Dateisystem | **nein** | **nein** | **nein** | `test_filesystem_is_not_isolated` |
 | Systemaufruf-Filter (seccomp) | **nein** | **nein** | **nein** | – |
 
-¹ Nur wenn der Kernel unprivilegierte User-Namespaces erlaubt (`unshare -r -n`). Ubuntu 24.04
-sperrt sie per AppArmor; die CI hebt die Sperre im Job «Sandbox-Nachweise Linux» auf und führt
-die Tests dort als normaler Benutzer und als root aus. `gw-orchestration sandbox-info` zeigt,
+¹ Nur wenn der Kernel unprivilegierte User-Namespaces erlaubt (`unshare -r -n`). Auf den
+GitHub-Runnern mit Ubuntu 24.04 sperrt AppArmor sie; die CI hebt die Sperre im Job
+«Sandbox-Nachweise Linux» auf und führt die Tests dort als normaler Benutzer und als root aus. `gw-orchestration sandbox-info` zeigt,
 was auf dem eigenen System gilt.
 ² macOS lehnt `RLIMIT_AS` ab; mit gesetztem `memory_mb` bricht die Sandbox fail-closed ab.
 Auf macOS `memory_mb=None` setzen (oder bewusst `strict=False`).
@@ -340,9 +341,10 @@ Andere OpenAI-kompatible Server: `--llm openai --base-url URL --modell NAME
 - **Schwärzung ist musterbasiert** und erkennt keine Namen oder Adressen.
 - **Token-Zählung** ist ohne Serverangaben eine Schätzung; das Kontextfenster ist daher
   ungefähr.
-- **Kein Streaming**, keine Bild- oder Audioeingaben, kein Code-Ausführen durch das Modell.
-- **Windows:** Prozess-Isolation nicht unterstützt (fail-closed); Thread-Modus funktioniert,
-  ist aber nicht in der CI.
+- **Kein Streaming**, keine Bild- oder Audioeingaben, keine Ausführung von Code, den das Modell
+  schreibt.
+- **Windows:** nicht unterstützt und nicht getestet; die Prozess-Isolation lehnt ohne POSIX ab
+  (fail-closed).
 
 ## Einordnung
 

@@ -1,7 +1,7 @@
 """Wie Werkzeugaufrufe zwischen Runtime und Modell ausgetauscht werden.
 
 * :class:`NativeToolCalling` nutzt das ``tools``/``tool_calls``-Feld der API.
-  Kleine Modelle schreiben den Aufruf manchmal als JSON in den Text statt in
+  Manche Modelle bzw. Chat-Vorlagen liefern den Aufruf als JSON im Text statt in
   ``tool_calls``; solche Antworten werden erkannt (``recovered=True``), wenn
   sie exakt einem bekannten Werkzeug entsprechen.
 * :class:`JsonToolCalling` ist der Rückfall für Modelle ohne natives

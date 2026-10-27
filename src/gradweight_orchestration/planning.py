@@ -8,8 +8,9 @@ Freigaben, Audit). Scheitert ein Schritt, wird der Rest des Plans mit der
 Fehlerbeschreibung neu geplant (höchstens ``max_replans``-mal). Pausiert ein
 Schritt für eine Freigabe, pausiert der ganze Plan.
 
-Wann sinnvoll: bei längeren Abläufen, in denen kleine Modelle im freien Loop
-den Faden verlieren. Der Preis sind zusätzliche Modellaufrufe.
+Gedacht für längere Abläufe, in denen ein freier Loop den Überblick verlieren
+kann; ob das bei einem bestimmten Modell hilft, ist hier nicht gemessen. Der
+Preis sind zusätzliche Modellaufrufe.
 """
 
 from __future__ import annotations

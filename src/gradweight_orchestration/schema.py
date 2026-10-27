@@ -1,7 +1,7 @@
 """JSON-Schema aus Python-Typannotationen und Docstrings.
 
 Unterstützt werden genau die Typen, die sich verlustfrei als JSON darstellen und
-von kleinen Modellen zuverlässig befüllen lassen:
+zu einfachen, flachen Schemas führen (keine ``$ref``, keine Rekursion):
 
 ``str``, ``int``, ``float``, ``bool``, ``Decimal`` (als ``number``),
 ``datetime.date``/``datetime.datetime`` (ISO 8601), ``Literal[...]``, ``Enum``
