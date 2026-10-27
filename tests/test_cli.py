@@ -41,3 +41,52 @@ def test_module_entry_point() -> None:
         check=True,
     )
     assert __version__ in completed.stdout
+
+
+def test_audit_verify(tmp_path, capsys: pytest.CaptureFixture[str], monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from gradweight_orchestration import AuditLog
+
+    path = tmp_path / "audit.jsonl"
+    log = AuditLog(path, key=b"schluessel", fsync=False)
+    log.append("event", {"a": 1})
+    log.append("event", {"a": 2})
+    monkeypatch.setenv("GW_AUDIT_KEY", "schluessel")
+    assert main(["audit-verify", str(path), "--key-env", "GW_AUDIT_KEY"]) == 0
+    assert "OK: Kette intakt (2 Einträge geprüft)" in capsys.readouterr().out
+    assert main(["audit-verify", str(path)]) == 1  # ohne Schlüssel stimmt kein HMAC
+    assert "FEHLER" in capsys.readouterr().out
+    monkeypatch.delenv("GW_AUDIT_KEY")
+    with pytest.raises(SystemExit, match="GW_AUDIT_KEY"):
+        main(["audit-verify", str(path), "--key-env", "GW_AUDIT_KEY"])
+
+
+def test_approvals_commands(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:  # type: ignore[no-untyped-def]
+    from gradweight_orchestration import ApprovalQueue, AuditLog
+
+    db, log = str(tmp_path / "f.sqlite"), str(tmp_path / "a.jsonl")
+    assert main(["approvals", "list", "--db", db]) == 0
+    assert "Keine offenen Freigaben" in capsys.readouterr().out
+    with ApprovalQueue(db, id_factory=iter(["a1", "a2"]).__next__) as queue:
+        for _ in range(2):
+            queue.submit(
+                run_id="r1",
+                agent="k",
+                call_id="c",
+                tool="buchen",
+                arguments={"betrag": 12430.5},
+                side_effect="money_moving",
+                amount="12430.5",
+                reason="über Limit",
+            )
+    assert main(["approvals", "list", "--db", db, "--run", "r1"]) == 0
+    out = capsys.readouterr().out
+    assert "a1  buchen  Lauf r1, Betrag 12430.5" in out
+    assert "Grund: über Limit" in out
+    assert main(["approvals", "approve", "a1", "--db", db, "--audit", log, "--by", "cfo"]) == 0
+    assert "a1: approved durch cfo" in capsys.readouterr().out
+    assert (
+        main(["approvals", "reject", "a2", "--db", db, "--by", "cfo", "--reason", "doppelt"]) == 0
+    )
+    assert main(["approvals", "approve", "a2", "--db", db, "--by", "cfo"]) == 1
+    assert "bereits entschieden" in capsys.readouterr().err
+    assert AuditLog(log).verify().count == 1

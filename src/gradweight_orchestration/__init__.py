@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .agent import Agent, PendingCall, RunResult, RunState, RunStatus, StepRecord
 from .approvals import ApprovalQueue, ApprovalRequest, ApprovalStatus
 from .audit import AuditLog, AuditRecord, Redactor, VerifyResult
 from .budget import Budget, BudgetState, Pricing
@@ -24,6 +25,8 @@ from .llm import (
     ToolCallingMode,
 )
 from .memory import ConversationWindow, LongTermMemory, MemoryNote, memory_tools
+from .multi_agent import Supervisor
+from .planning import Plan, PlanAndExecute, Planner, PlanRunResult, PlanState, PlanStep
 from .sandbox import (
     NetworkMode,
     SandboxCapabilities,
@@ -41,6 +44,7 @@ from .validation import from_jsonable, validate
 __version__ = "1.0.0"
 
 __all__ = [
+    "Agent",
     "ApprovalQueue",
     "ApprovalRequest",
     "ApprovalStatus",
@@ -61,11 +65,21 @@ __all__ = [
     "OpenAICompatClient",
     "OrchestrationError",
     "Param",
+    "PendingCall",
+    "Plan",
+    "PlanAndExecute",
+    "PlanRunResult",
+    "PlanState",
+    "PlanStep",
+    "Planner",
     "Policy",
     "PolicyDecision",
     "Pricing",
     "Redactor",
     "RetryPolicy",
+    "RunResult",
+    "RunState",
+    "RunStatus",
     "SandboxCapabilities",
     "SandboxLimits",
     "SandboxOutcome",
@@ -75,6 +89,8 @@ __all__ = [
     "ScriptedTurn",
     "SideEffect",
     "Span",
+    "StepRecord",
+    "Supervisor",
     "Tool",
     "ToolCallingMode",
     "ToolDefinitionError",

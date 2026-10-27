@@ -199,7 +199,7 @@ def _build(
     limits = sandbox
     if isolation is Isolation.PROCESS:
         target = _target_for(fn)
-        limits = sandbox or SandboxLimits()
+        limits = SandboxLimits() if sandbox is None else sandbox
     return Tool(
         fn=fn,
         name=schema.name,

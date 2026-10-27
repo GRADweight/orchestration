@@ -193,8 +193,8 @@ class OpenAICompatClient:
         self._model = model
         self._api_key = api_key
         self._timeout = timeout_s
-        self._retry = retry or RetryPolicy()
-        self._transport = transport or UrllibTransport()
+        self._retry = RetryPolicy() if retry is None else retry
+        self._transport = UrllibTransport() if transport is None else transport
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._extra = dict(extra_body or {})

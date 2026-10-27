@@ -90,7 +90,7 @@ class ProtocolError(LLMError):
 
     def __init__(self, message: str, *, raw: str = "", usage: Usage | None = None) -> None:
         self.raw = raw
-        self.usage = usage or Usage()
+        self.usage = Usage() if usage is None else usage
         super().__init__(message)
 
 
