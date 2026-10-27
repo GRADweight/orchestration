@@ -15,6 +15,11 @@ def _escape(text: str) -> str:
     return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
+def _escape_property(text: str) -> str:
+    """Eigenschaften wie title= trennen GitHub-Befehle an ':' und ','."""
+    return _escape(text).replace(":", "%3A").replace(",", "%2C")
+
+
 def main(path: str, *, skipped: bool, title: str) -> int:
     root = ET.parse(path).getroot()  # noqa: S314 - eigene, lokal erzeugte Datei
     failures = 0
@@ -25,14 +30,14 @@ def main(path: str, *, skipped: bool, title: str) -> int:
             node = case.find(kind)
             if node is not None and not skipped:
                 detail = (node.get("message") or "") + "\n" + (node.text or "")[-1500:]
-                print(f"::error title={_escape(name)}::{_escape(detail.strip())}")
+                print(f"::error title={_escape_property(name)}::{_escape(detail.strip())}")
                 failures += 1
         node = case.find("skipped")
         if node is not None:
             skips.append(f"{case.get('name', '')}: {node.get('message', '')}")
     if skipped:
         text = "\n".join(skips) if skips else "keine"
-        print(f"::notice title={_escape(title)}::{_escape(text)}")
+        print(f"::notice title={_escape_property(title)}::{_escape(text)}")
         return 0
     return 0 if failures == 0 else 1
 

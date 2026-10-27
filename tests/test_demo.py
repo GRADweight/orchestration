@@ -145,7 +145,8 @@ def test_erp_enforces_its_own_rules() -> None:
     assert erp.vorschlag_anlegen("R-1", "K-2001", zeilen) is vorschlag  # idempotent
     with pytest.raises(ErpFehler, match="entspricht nicht"):
         erp.buchen(vorschlag.vorschlag_id, Decimal(99), dt.date(2026, 11, 1))
-    erp.buchen(vorschlag.vorschlag_id, Decimal(100), dt.date(2026, 11, 1))
+    beleg = erp.buchen(vorschlag.vorschlag_id, Decimal(100), dt.date(2026, 11, 1))
+    assert beleg.iban == "CH93 0076 2011 6238 5295 7"  # Zahlungsziel aus den Stammdaten
     with pytest.raises(ErpFehler, match="Doppelbuchung"):
         erp.buchen(vorschlag.vorschlag_id, Decimal(100), dt.date(2026, 11, 1))
     with pytest.raises(ErpFehler, match="existiert nicht"):

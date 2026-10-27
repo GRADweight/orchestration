@@ -69,6 +69,8 @@ class Beleg:
     kreditor_nr: str
     betrag: Decimal
     zahlung_am: dt.date
+    iban: str
+    """Zahlungsziel aus den Stammdaten – nie die IBAN auf der Rechnung."""
 
 
 @dataclass
@@ -121,6 +123,7 @@ class MockERP:
             if betrag > self.api_limit:
                 raise ErpFehler(f"Betrag über dem API-Limit des ERP ({self.api_limit})")
             vorschlag.gebucht = True
+            kreditor = next(k for k in self.kreditoren.values() if k.nr == vorschlag.kreditor_nr)
             beleg = Beleg(
                 f"B-{len(self.belege) + 1:05d}",
                 vorschlag_id,
@@ -128,6 +131,7 @@ class MockERP:
                 vorschlag.kreditor_nr,
                 betrag,
                 zahlung_am,
+                kreditor.iban,
             )
             self.belege.append(beleg)
             return beleg
