@@ -340,6 +340,32 @@ def test_protocol_and_llm_errors_fail_the_run(fake_openai: FakeOpenAI) -> None:
     assert make_agent(client).run("x").reason == "llm_error"
 
 
+def test_long_errors_keep_their_type() -> None:
+    @tool(side_effect=SideEffect.READ_ONLY)
+    def laut(x: int) -> str:
+        """Fehler mit langem Text."""
+        raise ValueError("Ursache " * 500)
+
+    llm = ScriptedLLM([ScriptedTurn.call("laut", {"x": 1}), ScriptedTurn.final("ok")])
+    make_agent(llm, tools=[laut], max_observation_chars=400).run("x")
+    payload = llm.requests[1].messages[-2]["content"]
+    assert len(payload) <= 400
+    data = json.loads(payload)
+    assert data["error"]["type"] == "tool_exception"
+    assert data["error"]["message"].startswith("ValueError: Ursache")
+
+
+def test_unexpected_errors_still_close_the_audit_run() -> None:
+    audit = AuditLog()
+    llm = ScriptedLLM([])  # erschöpft sofort: kein LLMError, sondern Programmierfehler
+    with pytest.raises(OrchestrationError, match="erschöpft"):
+        make_agent(llm, audit=audit).run("x")
+    last = audit.records()[-1]
+    assert last.kind == "run_aborted"
+    assert "ScriptExhaustedError" in str(last.data["error"])
+    assert audit.verify().ok
+
+
 def test_long_observations_are_truncated_validly() -> None:
     llm = ScriptedLLM([ScriptedTurn.call("langer_text", {}), ScriptedTurn.final("ok")])
     make_agent(llm, max_observation_chars=500).run("x")
@@ -556,6 +582,24 @@ def test_mixed_turn_keeps_call_order() -> None:
     assert result.ok
     sent = llm.requests[1].messages
     assert [m["tool_call_id"] for m in sent if m["role"] == "tool"] == ["call_1_0", "call_1_1"]
+
+
+def test_approval_does_not_override_a_later_deny() -> None:
+    queue = ApprovalQueue()
+    llm = ScriptedLLM([*script("RE-GROSS")[:2], ScriptedTurn.final("ok")])
+    paused = make_agent(llm, approvals=queue).run("x")
+    queue.approve(paused.pending_approvals[0].id, by="cfo")
+    stricter = make_agent(
+        llm,
+        approvals=queue,
+        policy=Policy(
+            grade=AutonomyGrade.MANDATE, money_limit=Decimal(5000), deny=frozenset({"buchen"})
+        ),
+    )
+    result = stricter.resume(paused.state)
+    assert BOOKINGS == []
+    denied = next(s for s in result.steps if s.decision == "deny")
+    assert "Trotz Freigabe" in denied.observation["error"]["message"]  # type: ignore[index, call-overload]
 
 
 def test_tool_removed_before_resume() -> None:

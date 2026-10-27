@@ -228,7 +228,9 @@ Standard; sie wird in den Tests gegen den Code geprüft:
   `gw-orchestration approvals list|approve|reject --db freigaben.sqlite`.
 - **Pause und Fortsetzung:** `RunResult.state` ist JSON; `agent.resume(state)` führt
   freigegebene Aufrufe aus, meldet Ablehnungen als Beobachtung und setzt den Loop fort – auch
-  in einem anderen Prozess. Die Wartezeit zählt nicht zum Zeitbudget.
+  in einem anderen Prozess. Die Wartezeit zählt nicht zum Zeitbudget. Beim Fortsetzen wird
+  die Policy erneut geprüft: eine Freigabe übersteuert kein Verbot (z.B. wenn das Werkzeug
+  inzwischen auf der Sperrliste steht).
 - **Audit-Log:** jede Station (Lauf, Modellaufruf mit Prompt-Hash, Policy-Entscheid,
   Freigabe, Werkzeugergebnis) als JSON-Zeile mit Hash des Vorgängers; `verify()` bzw.
   `gw-orchestration audit-verify` erkennt veränderte, gelöschte oder umsortierte Einträge.

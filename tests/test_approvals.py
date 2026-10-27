@@ -96,6 +96,15 @@ def test_concurrent_decisions_only_one_wins() -> None:
     assert outcomes.count("ok") == 1
 
 
+def test_run_filter_treats_wildcards_literally() -> None:
+    queue = ApprovalQueue()
+    submit(queue, run_id="run_a/kind-1")
+    submit(queue, run_id="runXa/kind-1")
+    submit(queue, run_id="r%/kind-1")
+    assert [r.run_id for r in queue.pending(run_id="run_a")] == ["run_a/kind-1"]
+    assert [r.run_id for r in queue.pending(run_id="r%")] == ["r%/kind-1"]
+
+
 def test_persistence_and_run_filter(tmp_path: Path) -> None:
     path = tmp_path / "freigaben.sqlite"
     queue = ApprovalQueue(path, id_factory=iter(["a1", "a2", "a3"]).__next__)

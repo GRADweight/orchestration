@@ -239,8 +239,9 @@ class ApprovalQueue:
         query = f"SELECT {_COLUMNS} FROM approvals WHERE status = 'pending'"  # noqa: S608
         params: tuple[str, ...] = ()
         if run_id is not None:
-            query += " AND (run_id = ? OR run_id LIKE ?)"
-            params = (run_id, f"{run_id}/%")
+            escaped = run_id.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            query += " AND (run_id = ? OR run_id LIKE ? ESCAPE '\\')"
+            params = (run_id, f"{escaped}/%")
         with self._lock:
             rows = self._conn.execute(query + " ORDER BY created_at, id", params).fetchall()
         return [_row_to_request(r) for r in rows]

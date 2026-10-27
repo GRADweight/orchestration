@@ -37,7 +37,7 @@ from ._json import JSONObject, JSONValue, canonical_json, dumps, sha256_hex, tru
 from .approvals import ApprovalQueue, ApprovalRequest, ApprovalStatus
 from .audit import AuditLog, Redactor
 from .budget import Budget, BudgetState
-from .errors import OrchestrationError
+from .errors import ArgumentValidationError, OrchestrationError
 from .execution import ErrorType, ToolExecutor, ToolResult
 from .governance import Decision, Policy
 from .llm.protocol import AssistantTurn, ToolCallingMode, strategy_for
@@ -413,7 +413,7 @@ class Agent:
         return self._drive(current, operation="resume_agent")
 
     def pending_approvals(self, state: RunState) -> list[ApprovalRequest]:
-        """Offene und entschiedene Anträge, auf die der Lauf (rekursiv) wartet."""
+        """Noch offene Anträge, auf die der Lauf wartet (inkl. Spezialisten)."""
         found: list[ApprovalRequest] = []
         for pending in state.pending:
             if pending.approval_id is not None:
@@ -455,6 +455,16 @@ class Agent:
             session = _Session(state=state, started=self._clock(), span=span)
             try:
                 outcome = self._loop(session)
+            except Exception as exc:
+                # Jeder Lauf endet im Audit-Log, auch wenn ein Modelladapter oder die
+                # Infrastruktur unerwartet scheitert.
+                self.audit.append(
+                    "run_aborted",
+                    {"error": f"{type(exc).__name__}: {exc}", "usage": state.budget.to_json()},
+                    run_id=state.run_id,
+                    agent=self.name,
+                )
+                raise
             finally:
                 state.budget.active_seconds += self._clock() - session.started
             span.update(
@@ -710,15 +720,29 @@ class Agent:
     ) -> None:
         payload = dumps(observation)
         if len(payload) > self.max_observation_chars:
-            payload = dumps(
-                {
-                    "ok": observation.get("ok"),
-                    "result_truncated": truncate(
-                        dumps(observation.get("result")), self.max_observation_chars - 120
-                    ),
-                    "hinweis": "Ergebnis gekürzt",
-                }
-            )
+            room = max(80, self.max_observation_chars - 160)
+            error = observation.get("error")
+            if isinstance(error, dict):  # Fehler: Typ behalten, Text und Details kürzen
+                payload = dumps(
+                    {
+                        "ok": False,
+                        "error": {
+                            "type": error.get("type"),
+                            "message": truncate(
+                                f"{error.get('message', '')} {dumps(error.get('details'))}", room
+                            ),
+                        },
+                        "hinweis": "Fehlerbeschreibung gekürzt",
+                    }
+                )
+            else:
+                payload = dumps(
+                    {
+                        "ok": observation.get("ok"),
+                        "result_truncated": truncate(dumps(observation.get("result")), room),
+                        "hinweis": "Ergebnis gekürzt",
+                    }
+                )
         state.observations[call_id] = payload
         ok = observation.get("ok") is True
         if not ok:
@@ -1101,6 +1125,19 @@ class Agent:
                         arguments=request.arguments,
                     )
                 elif request.status.approved and approved_tool is not None:
+                    blocked = self._denied_after_approval(approved_tool, request)
+                    if blocked is not None:
+                        span.fail("policy_denied")
+                        self._observe(
+                            state,
+                            pending.call_id,
+                            request.tool,
+                            _error(ErrorType.POLICY_DENIED, blocked),
+                            step=step,
+                            arguments=request.effective_arguments,
+                            decision="deny",
+                        )
+                        continue
                     changed = " mit Änderungen" if request.status is ApprovalStatus.MODIFIED else ""
                     self._execute(
                         session,
@@ -1128,6 +1165,17 @@ class Agent:
                     )
         state.pending = still
         return not still
+
+    def _denied_after_approval(self, item: Tool[..., Any], request: ApprovalRequest) -> str | None:
+        """Eine Freigabe übersteuert kein Verbot: Policy beim Fortsetzen erneut prüfen."""
+        try:
+            arguments = item.parse_arguments(request.effective_arguments)
+        except ArgumentValidationError:
+            return None  # ungültige Argumente meldet die Ausführung selbst
+        decision = self.policy.decide(item, arguments)
+        if decision.decision is Decision.DENY:
+            return f"Trotz Freigabe nicht ausgeführt: {decision.reason}"
+        return None
 
     def _finish_turn(self, state: RunState) -> _Outcome | None:
         """Hängt die Beobachtungen in Aufrufreihenfolge an und wertet Fehler aus."""
