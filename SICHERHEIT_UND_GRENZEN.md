@@ -26,3 +26,6 @@
 - [ ] Sichtbarkeit erst nach **ausdruecklicher Owner-Freigabe** (kein automatischer Visibility-Wechsel)
 
 _Grundlage: interner Forensic-Scan 25.10.2026; Werte aus /tmp/gwscan; nichts geschoben._
+
+## Warum diese Lizenz (ein Satz)
+Offen nutzbarer Orchestrierungs-Code (35 Tests, ~4900 Zeilen) = Talent-Signal.
