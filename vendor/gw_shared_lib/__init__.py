@@ -1,7 +1,7 @@
 """GRADweight — shared-lib: das gemeinsame technische Fundament.
 
 Dieses Paket bündelt die Bausteine, aus denen alle GRADweight-Prototypen
-(1–20, s. internal-kb/katalog) und Prototypen-Repos aufgebaut werden.
+und die Prototypen-Repos aufgebaut werden.
 Ziel: ein KMU soll mit `pip install gw-shared-lib` einen lauffähigen
 Grundstock bekommen, der **lokal** läuft und keine Cloud-Datenübertragung
 verlangt (DSG / SOVERAE-konform).
